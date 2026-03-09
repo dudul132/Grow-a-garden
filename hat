@@ -1,0 +1,107 @@
+-- LocalScript di StarterPlayerScripts
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+
+-- Konfigurasi Visual
+local COLORS = {
+	Color3.fromRGB(0, 255, 255), -- Biru
+	Color3.fromRGB(255, 20, 147), -- Pink Terang
+	Color3.fromRGB(148, 0, 211)   -- Ungu Terang
+}
+
+local RADIUS = 0.8         -- Sangat dekat dengan kepala
+local ORBIT_SPEED = 2.8    -- Kecepatan putar
+local BOUNCE_SPEED = 2.9     -- Kecepatan naik-turun
+local BOUNCE_AMT = 0.16    -- Intensitas naik-turun
+local SPHERE_SIZE = 0.4    -- Ukuran bola lebih besar
+local HEIGHT_OFFSET = 1.5  -- Pas di atas kepala
+
+local spheres = {}
+
+-- Fungsi untuk membuat bola dan trail
+local function createHologramSpheres(character)
+	local head = character:WaitForChild("Head")
+	local folder = Instance.new("Folder")
+	folder.Name = "HologramOrbit"
+	folder.Parent = character
+	
+	for i = 1, 3 do
+		local color = COLORS[i]
+		
+		-- Buat Part Bola
+		local part = Instance.new("Part")
+		part.Size = Vector3.new(SPHERE_SIZE, SPHERE_SIZE, SPHERE_SIZE)
+		part.Shape = Enum.PartType.Ball
+		part.Color = color
+		part.Material = Enum.Material.Neon
+		part.Transparency = 0.8 -- Efek hologram agak blur/transparan
+		part.CanCollide = false
+		part.Anchored = true
+		part.Parent = folder
+		
+		-- PointLight (Dibuat sangat terang)
+		local light = Instance.new("PointLight")
+		light.Color = color
+		light.Range = 6.8
+		light.Brightness = 2
+		light.Shadows = true
+		light.Parent = part
+		
+		-- Tambahkan Attachment untuk Trail
+		local att0 = Instance.new("Attachment", part)
+		att0.Position = Vector3.new(0, 0.2, 0)
+		local att1 = Instance.new("Attachment", part)
+		att1.Position = Vector3.new(0, -0.2, 0)
+		
+		-- Buat Trail (Jejak Cahaya)
+		local trail = Instance.new("Trail")
+		trail.Attachment0 = att0
+		trail.Attachment1 = att1
+		trail.Color = ColorSequence.new(color)
+		trail.Transparency = NumberSequence.new(0.4, 1) -- Memudar di ujung
+		trail.Lifetime = 0.4 -- Panjang jejak
+		trail.LightEmission = 1 -- Membuat trail bercahaya (glow)
+		trail.WidthScale = NumberSequence.new(1, 0)
+		trail.Parent = part
+		
+		table.insert(spheres, {Part = part, Index = i})
+	end
+end
+
+-- Fungsi agar script tetap jalan saat respawn
+local function onCharacterAdded(char)
+	-- Bersihkan tabel lama jika ada
+	table.clear(spheres)
+	createHologramSpheres(char)
+end
+
+player.CharacterAdded:Connect(onCharacterAdded)
+if player.Character then onCharacterAdded(player.Character) end
+
+-- Loop Pergerakan (Smooth)
+RunService.RenderStepped:Connect(function()
+	local char = player.Character
+	if not char or not char:FindFirstChild("Head") then return end
+	local headPos = char.Head.Position
+	local t = tick()
+	
+	for _, data in ipairs(spheres) do
+		local part = data.Part
+		local i = data.Index
+		
+		if part and part.Parent then
+			-- Rumus Orbit
+			local angle = (t * ORBIT_SPEED) + (i * (math.pi * 2 / 3))
+			local x = math.cos(angle) * RADIUS
+			local z = math.sin(angle) * RADIUS
+			
+			-- Rumus Floating (Atas Bawah)
+			local y = HEIGHT_OFFSET + (math.sin(t * BOUNCE_SPEED + i) * BOUNCE_AMT)
+			
+			-- Update Posisi
+			part.CFrame = CFrame.new(headPos) * CFrame.new(x, y, z)
+		end
+	end
+end)
