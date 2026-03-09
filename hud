@@ -1,0 +1,205 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+
+-- Matikan print agar bersih
+local function print(...) end 
+
+local LocalPlayer = Players.LocalPlayer
+if not LocalPlayer then
+	repeat task.wait() until Players.LocalPlayer
+	LocalPlayer = Players.LocalPlayer
+end
+
+-- [ 1. SETUP GUI SYSTEM ] --
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "FinalHUD_Fix"
+ScreenGui.Parent = game.CoreGui
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
+
+-- Main Frame
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "HUDFrame"
+MainFrame.Size = UDim2.new(0, 200, 0, 60)
+MainFrame.Position = UDim2.new(0.5, -100, 0.8, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+MainFrame.BackgroundTransparency = 0.1
+MainFrame.BorderSizePixel = 0
+MainFrame.ClipsDescendants = true -- Agar isi hilang saat mengecil
+MainFrame.Parent = ScreenGui
+
+-- Rounded & Stroke
+local UICorner = Instance.new("UICorner", MainFrame)
+UICorner.CornerRadius = UDim.new(0.15, 0)
+
+local UIStroke = Instance.new("UIStroke", MainFrame)
+UIStroke.Thickness = 2
+UIStroke.Color = Color3.fromRGB(255, 255, 255)
+UIStroke.Transparency = 0.3
+
+-- Avatar
+local Avatar = Instance.new("ImageLabel", MainFrame)
+Avatar.Size = UDim2.new(0, 40, 0, 40)
+Avatar.Position = UDim2.new(0, 10, 0.5, -20)
+Avatar.BackgroundTransparency = 1
+Instance.new("UICorner", Avatar).CornerRadius = UDim.new(0.3, 0)
+
+-- [ 2. TEXT SHINE SYSTEM (GRADIENT) ] --
+local PlayerName = Instance.new("TextLabel", MainFrame)
+PlayerName.Size = UDim2.new(0, 130, 0, 20)
+PlayerName.Position = UDim2.new(0, 60, 0.2, 0)
+PlayerName.BackgroundTransparency = 1
+PlayerName.Text = LocalPlayer.DisplayName
+PlayerName.Font = Enum.Font.GothamBold
+PlayerName.TextSize = 14
+PlayerName.TextXAlignment = Enum.TextXAlignment.Left
+PlayerName.TextColor3 = Color3.fromRGB(255, 255, 255) -- Warna dasar (putih agar gradient terlihat jelas)
+
+-- Gradient untuk efek kilapan teks
+local TextGradient = Instance.new("UIGradient")
+TextGradient.Parent = PlayerName
+-- Warna Sequence: Hitam -> Putih (Kilap) -> Hitam
+TextGradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 30, 30)),     -- Hitam/Gelap
+	ColorSequenceKeypoint.new(0.4, Color3.fromRGB(30, 30, 30)),   -- Hitam
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),-- PUTIH (KILAP)
+	ColorSequenceKeypoint.new(0.6, Color3.fromRGB(30, 30, 30)),   -- Hitam
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 30, 30))      -- Hitam
+})
+TextGradient.Rotation = 0
+TextGradient.Offset = Vector2.new(-1, 0) -- Mulai dari kiri luar
+
+-- Bar Darah
+local HBBack = Instance.new("Frame", MainFrame)
+HBBack.Size = UDim2.new(0, 130, 0, 6)
+HBBack.Position = UDim2.new(0, 60, 0.65, 0)
+HBBack.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
+Instance.new("UICorner", HBBack)
+
+local HBFill = Instance.new("Frame", HBBack)
+HBFill.Size = UDim2.new(1, 0, 1, 0)
+HBFill.BackgroundColor3 = Color3.fromRGB(60, 200, 80)
+Instance.new("UICorner", HBFill)
+
+-- [ 3. VFX SYSTEM ] --
+local function spawnHeartVFX()
+	for i = 1, 6 do
+		task.spawn(function()
+			local h = Instance.new("TextLabel", ScreenGui)
+			h.Size = UDim2.new(0, 30, 0, 30)
+			h.Position = MainFrame.Position
+			h.BackgroundTransparency = 1
+			h.Text = "♡"
+			h.TextColor3 = Color3.fromRGB(255, 100, 100)
+			h.TextTransparency = 0.4
+			h.TextSize = 25
+			
+			local rX = math.random(-80, 80)
+			local rY = math.random(-80, 20)
+			
+			-- Menyebar
+			TweenService:Create(h, TweenInfo.new(0.8, Enum.EasingStyle.Quart), {
+				Position = h.Position + UDim2.new(0, rX, 0, rY),
+				Rotation = math.random(-45, 45)
+			}):Play()
+			
+			task.wait(0.6)
+			
+			-- Jatuh & Hilang
+			TweenService:Create(h, TweenInfo.new(2, Enum.EasingStyle.Sine), {
+				Position = h.Position + UDim2.new(0, rX, 0, 200),
+				TextTransparency = 1
+			}):Play()
+			
+			Debris:AddItem(h, 2.5)
+		end)
+	end
+end
+
+-- Animasi Kilau Teks Loop
+task.spawn(function()
+	while true do
+		task.wait(7) -- Setiap 7 detik
+		-- Reset Offset ke kiri
+		TextGradient.Offset = Vector2.new(-1, 0)
+		-- Jalan ke kanan (Kilap lewat)
+		local tween = TweenService:Create(TextGradient, TweenInfo.new(1.5, Enum.EasingStyle.Quad), {Offset = Vector2.new(1, 0)})
+		tween:Play()
+	end
+end)
+
+-- Animasi Pulse Outline Loop
+task.spawn(function()
+	while true do
+		TweenService:Create(UIStroke, TweenInfo.new(2), {Transparency = 0.8}):Play() 
+		task.wait(2)
+		TweenService:Create(UIStroke, TweenInfo.new(2), {Transparency = 0.2}):Play() 
+		task.wait(2)
+	end
+end)
+
+-- [ 4. LOGIC TRACKING (FINAL FIX) ] --
+local lastHP = 100
+
+local function track(char)
+	local hum = char:WaitForChild("Humanoid", 10)
+	if not hum then return end
+
+	-- RESET VISUAL SAAT RESPAWN (Fix Darah Gak Muncul)
+	MainFrame.Visible = true
+	MainFrame.Size = UDim2.new(0, 0, 0, 0) -- Pastikan mulai dari 0 untuk efek pop
+	
+	-- Update Avatar
+	Avatar.Image = Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+	
+	-- Update Darah Langsung (Supaya bar terisi penuh saat spawn)
+	HBFill.Size = UDim2.new(math.clamp(hum.Health/hum.MaxHealth, 0, 1), 0, 1, 0)
+	HBFill.BackgroundColor3 = Color3.fromRGB(60, 200, 80) -- Reset warna hijau
+	lastHP = hum.Health
+
+	-- Animasi Muncul GUI
+	MainFrame:TweenSize(UDim2.new(0, 200, 0, 60), "Out", "Back", 0.6, true)
+
+	-- Listener Perubahan Darah
+	local hpChange
+	hpChange = hum.HealthChanged:Connect(function(hp)
+		local ratio = math.clamp(hp/hum.MaxHealth, 0, 1)
+		
+		-- Animasi Bar
+		HBFill:TweenSize(UDim2.new(ratio, 0, 1, 0), "Out", "Quad", 0.2, true)
+		
+		-- Ganti warna bar kalau sekarat
+		if ratio < 0.3 then
+			HBFill.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+		else
+			HBFill.BackgroundColor3 = Color3.fromRGB(60, 200, 80)
+		end
+
+		-- VFX Hati kalau berkurang
+		if hp < lastHP then spawnHeartVFX() end
+		lastHP = hp
+	end)
+
+	-- Listener Kematian
+	local died
+	died = hum.Died:Connect(function()
+		hpChange:Disconnect() -- Putus koneksi darah biar gak error
+		died:Disconnect()
+		
+		-- Animasi Hilang
+		MainFrame:TweenSize(UDim2.new(0, 0, 0, 0), "In", "Back", 0.5, true, function()
+			MainFrame.Visible = false -- Sembunyikan total
+		end)
+	end)
+end
+
+-- Init Script
+if LocalPlayer.Character then 
+	task.spawn(track, LocalPlayer.Character) 
+end
+
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+	task.wait(0.5) -- Jeda dikit biar karakter loading sempurna
+	track(newChar)
+end)
