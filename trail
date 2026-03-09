@@ -1,0 +1,60 @@
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local function setupCharacter(character)
+	local rootPart = character:WaitForChild("HumanoidRootPart")
+
+	---------------------------------------------------------
+	-- [BAGIAN 1: CAHAYA MULUS & REDUP]
+	---------------------------------------------------------
+	local light = Instance.new("PointLight")
+	light.Name = "SoftGlow"
+	light.Color = Color3.fromRGB(0, 255, 255)
+	
+	-- Settingan biar gak silau:
+	light.Range = 6        -- Jarak pendek saja (hanya sekitar badan)
+	light.Brightness = 0.3 -- Kecil sekali supaya mulus, cuma buat aura tipis
+	
+	light.Parent = rootPart
+
+
+	---------------------------------------------------------
+	-- [BAGIAN 2: UKURAN (TIPIS & RAPI)]
+	---------------------------------------------------------
+	local attTop = Instance.new("Attachment", rootPart)
+	attTop.Position = Vector3.new(0, 0.7, 0) -- Lebih ramping
+	
+	local attBottom = Instance.new("Attachment", rootPart)
+	attBottom.Position = Vector3.new(0, -0.7, 0)
+
+
+	---------------------------------------------------------
+	-- [BAGIAN 3: TRAIL KACA TRANSPARAN]
+	---------------------------------------------------------
+	local trail = Instance.new("Trail")
+	trail.Attachment0 = attTop
+	trail.Attachment1 = attBottom
+	
+	trail.Texture = "rbxassetid://4011703107" -- Tekstur Blur
+	trail.LightEmission = 1    -- Glow standar (gak lebay)
+	trail.LightInfluence = 0   -- Tetap berwarna biru walau gelap
+	trail.FaceCamera = false
+	trail.Color = ColorSequence.new(Color3.fromRGB(0, 255, 255))
+	
+	-- Ekor trail sedang
+	trail.Lifetime = 0.5 
+
+	-- TRANSPARANSI EFEK KACA (Smooth Transition)
+	-- Kita mulai dari 0.7 (Sangat transparan/bening)
+	trail.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.7),   -- Muncul: Bening (Kaca)
+		NumberSequenceKeypoint.new(0.5, 0.85),-- Tengah: Makin tipis
+		NumberSequenceKeypoint.new(1, 1)      -- Akhir: Hilang mulus
+	})
+	
+	trail.Parent = rootPart
+end
+
+-- Sistem Anti-Reset (Tetap ada pas respawn)
+player.CharacterAdded:Connect(setupCharacter)
+if player.Character then setupCharacter(player.Character) end
